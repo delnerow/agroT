@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base reset and layout */
+html, body, #root {
+  height: 100%;
+}
+body {
+  @apply bg-gray-50 text-gray-800 antialiased;
+  margin: 0;
+}
+
+/* Simple container utility for pages */
+.page-container {
+  @apply max-w-7xl mx-auto px-4 py-6;
+}
+
+/* Themed utilities */
+.card {
+  @apply bg-white rounded-xl shadow-soft p-4 border border-brand-100;
+}
+.card-title {
+  @apply font-semibold text-gray-800 flex items-center gap-2;
+}
+.section-accent {
+  @apply w-1.5 h-5 rounded-full bg-brand-600 inline-block align-middle;
+}
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors;
+}
+.btn-primary {
+  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+}
+.btn-outline {
+  @apply btn border border-brand-300 text-brand-700 hover:bg-brand-50;
+}
+.input {
+  @apply w-full border border-brand-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-200 rounded-lg px-3 py-2 outline-none bg-white/90;
+}
+.select {
+  @apply border border-brand-200 rounded-lg px-3 py-2 bg-white/90 focus:border-brand-400 focus:ring-2 focus:ring-brand-200 outline-none;
+}
+.badge {
+  @apply inline-block text-xs px-2 py-0.5 rounded-full bg-brand-100 text-brand-800;
+}
