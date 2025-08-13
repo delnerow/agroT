@@ -1,15 +1,12 @@
 import https from 'https';
 import { writeFileSync } from 'fs';
 import { exec } from 'child_process';
-
+import axios from 'axios';
+import * as XLSX from 'xlsx';
 // CONFIGURAÇÃO
 const PRODUTO = 'SOJA';
 const UF = 'SP';
 const DATA_CONJ = '2025-07-28';
-
-console.log('🚀 CONAB FETCHER - VERSÃO COM COOKIE');
-console.log('='.repeat(50));
-console.log(`📊 Produto: ${PRODUTO} | UF: ${UF}`);
 
 // Desabilitar verificação SSL (não recomendado para produção)
 process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
@@ -34,8 +31,6 @@ function logErrorDetails(response) {
 // Update makeHttpRequest to log details on error
 function makeHttpRequest(url, options = {}) {
   return new Promise((resolve, reject) => {
-    console.log(`📡 ${options.method || 'GET'} ${url.substring(0, 80)}...`);
-    
     const req = https.request(url, {
       method: options.method || 'GET',
       headers: {
@@ -81,110 +76,8 @@ function makeHttpRequest(url, options = {}) {
   });
 }
 
-async function fetchConabData() {
-  try {
-    console.log('\n🔄 PASSO 1: Inicializando sessão e capturando cookies...');
-    const initResponse = await new Promise((resolve, reject) => {
-      https.get(IFRAME_URL, { rejectUnauthorized: false }, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          // Log the full response for debugging
-          console.log('\n🔍 Resposta completa da inicialização:');
-          console.log('Status Code:', res.statusCode);
-          console.log('Headers:', res.headers);
-          console.log('Body:', data.substring(0, 500)); // Log first 500 characters of the body
-
-          // Extrair cookies da resposta GET
-          const rawCookies = res.headers['set-cookie'];
-          const cookieHeader = extractCookies(rawCookies);
-          console.log('✅ Cookies capturados:', cookieHeader);
-          resolve({ data, cookieHeader });
-        });
-      }).on('error', reject);
-    });
-    
-
-    // Espera 2s para garantir sessão
-    console.log('⏳ Aguardando 2 segundos...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    console.log('\n📊 PASSO 2: Enviando consulta com cookies...');
-    const formData = [
-      `paramdata_conjuntura=${encodeURIComponent(DATA_CONJ)}`,
-      `paramproduto=${encodeURIComponent(PRODUTO)}`,
-      'path=/home/Produtos/produtos360.cda',
-      'dataAccessId=conjuntura',
-      'outputIndexId=1',
-      'pageSize=0',
-      'pageStart=0',
-      'sortBy=',
-      'paramsearchBox=',
-    ].join('&');
-
-    const queryResponse = await makeHttpRequest(CDA_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Referer': IFRAME_URL,
-        'X-Requested-With': 'XMLHttpRequest',
-        'Origin': BASE_URL,
-        'Cookie': initResponse.cookieHeader
-      },
-      body: formData
-    });
-
-    console.log('\n🎯 PASSO 3: Processando resposta...');
-    let data;
-    try {
-      data = JSON.parse(queryResponse.data);
-      console.log('✅ JSON válido recebido!');
-      console.log(`📊 Tipo: ${Array.isArray(data) ? 'Array' : 'Object'}`);
-      console.log(`📏 Tamanho: ${Array.isArray(data) ? data.length : Object.keys(data).length} itens`);
-    } catch (e) {
-      console.log('⚠️  Resposta não é JSON, salvando como texto');
-      data = queryResponse.data;
-    }
-
-    // Salvar arquivo
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
-    const filename = `conab_${PRODUTO}_${UF}_${timestamp}.json`;
-    writeFileSync(filename, JSON.stringify(data, null, 2));
-    console.log(`💾 Dados salvos em: ${filename}`);
-
-    // Preview
-    console.log('\n📋 PREVIEW DOS DADOS:');
-    console.log('='.repeat(30));
-    if (Array.isArray(data)) {
-      console.log(`Array com ${data.length} elementos`);
-      if (data.length > 0) {
-        console.log('Primeiro elemento:', JSON.stringify(data[0], null, 2).substring(0, 200) + '...');
-      }
-    } else if (typeof data === 'object' && data !== null) {
-      console.log(`Objeto com propriedades: ${Object.keys(data).join(', ')}`);
-      console.log('Dados:', JSON.stringify(data, null, 2).substring(0, 300) + '...');
-    } else {
-      console.log(`Tipo: ${typeof data}`);
-      console.log('Conteúdo:', String(data).substring(0, 300) + '...');
-    }
-
-    console.log('\n🎉 SUCESSO TOTAL!');
-    return data;
-
-  } catch (error) {
-    console.log('\n💥 ERRO FATAL:');
-    console.log(`❌ ${error.message}`);
-    console.log('\n🔧 POSSÍVEIS SOLUÇÕES:');
-    console.log('1. Verificar conexão com internet');
-    console.log('2. Tentar com VPN ou rede diferente');
-    console.log('3. Executar como administrador');
-    console.log('4. Verificar firewall/antivírus');
-    return null;
-  }
-}
 
 function executeCurlCommand(command) {
-  console.log(`\n🔧 Executando comando curl: ${command}`);
   return new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
       if (error) {
@@ -199,7 +92,7 @@ function executeCurlCommand(command) {
 // Função para fazer post com dados form-urlencoded
   const payload = (dataAccessId) => {
     const params = [
-      `path=${encodeURIComponent("/home/Produtos/produtos360.cda")}`,
+      `path=/home/Produtos/produtos360.cda`,
       'outputIndexId=1',
       'pageSize=0',
       'pageStart=0',
@@ -214,15 +107,21 @@ function executeCurlCommand(command) {
       params.push(`paramproduto=${encodeURIComponent(PRODUTO)}`);
       params.push('dataAccessId=conjuntura');
     }
-    if(dataAccessId === "ultimaSemanaPrecoProduto_new"){
-      params.push(`paramprodutoPreco=[Produto].${encodeURIComponent(PRODUTO)}`);
-      params.push('dataAccessId=ultimaSemanaPrecoProduto_new');
+    if(dataAccessId === "preco"){
+      params.push(`paramprodutoPreco=${encodeURIComponent("[Produto].",PRODUTO)}`);
+      params.push('dataAccessId=precoProduto');
+      params.push(`outputType=json`);
+      params.push(`settingsattachmentName=Dados.json`);
+      params.push(`wrapItUp=true`);
     }
     return params.join('&');
+
+
+    
   };
 
 
-async function fetchConabDataWithCurl() {
+async function fetchConabDataWithCurl(requisicao = "conjuntura") {
   try {
     console.log('\n🔄 PASSO 1: Inicializando sessão e capturando cookies...');
     const initCurlCommand = `curl -k -i -X GET "${IFRAME_URL}"`;
@@ -244,21 +143,43 @@ async function fetchConabDataWithCurl() {
       -H "X-Requested-With: XMLHttpRequest" \
       -H "Origin: ${BASE_URL}" \
       -H "Cookie: ${cookies}" \
-      --data "${payload("conjuntura")}"`;
+      --data "${payload(requisicao)}"`;
 
     const queryResponse = await executeCurlCommand(queryCurlCommand);
-    const jsonData = JSON.parse(queryResponse);
-    //console.log('\n🎯 Resposta da consulta:');
-    //console.log(queryResponse.substring(0, 500)); // Log first 500 characters of the response
-    const resultset = jsonData.resultset;
-    console.log('\n📊 Conjuntura:' ,resultset);
+    
+    console.log('\n🎯 Resposta da consulta:');
+    console.log(queryResponse.substring(0, 500)); // Log first 500 characters of the response
+    if( requisicao === "preco"){
+      
+      
+      const jsonData = await pegarJson(queryResponse.substring(0, 500));
+      
+
+    }
+    else if (requisicao === "conjuntura") {
+      const jsonData = JSON.parse(queryResponse);
+      const resultset = jsonData.resultset;
+      console.log('\n📊 Conjuntura:' ,resultset);
+    }
   } catch (error) {
     console.log('\n💥 ERRO FATAL:');
     console.log(`❌ ${error}`);
   }
 }
 
+async function pegarJson(fileId, jsessionId) {
+  const url = `https://pentahoportaldeinformacoes.conab.gov.br/pentaho/plugin/cda/api/unwrapQuery?path=%2Fhome%2FProdutos%2Fprodutos360.cda&uuid=${fileId}`;
+
+  const { data } = await axios.get(url, {
+    headers: { Cookie: `JSESSIONID=...` },
+    responseType: 'json' // <<< aqui pega como JSON
+  });
+
+  return data;
+}
+
+
 // EXECUÇÃO
 (async () => {
-  await fetchConabDataWithCurl();
+  await fetchConabDataWithCurl("preco");
 })();

@@ -1,46 +1,87 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Base reset and layout */
 html, body, #root {
   height: 100%;
 }
 body {
-  @apply bg-gray-50 text-gray-800 antialiased;
+  /* Inter font */
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+
   margin: 0;
 }
+
+/* Brand tokens: grass (primary) + sky (secondary) */
+:root {
+  --brand-50:  #edf8f1;
+  --brand-100: #dff7e6;
+  --brand-200: #bff0cd;
+  --brand-300: #8de0a9;
+  --brand-400: #58cc80;
+  --brand-500: #39b768;
+  --brand-600: #28a745; /* primary */
+  --brand-700: #23963e;
+  --brand-800: #1d7a34;
+  --brand-900: #135224;
+
+  --sky-50:   #e9f5ff;
+  --sky-100:  #dff0ff;
+  --sky-200:  #bfe1ff;
+  --sky-300:  #97ceff;
+  --sky-400:  #5cb3ff; /* secondary */
+  --sky-500:  #47a5fb;
+}
+
+/* Bridge classes to use tokens with Tailwind v4 */
+.bg-brand-50 { background-color: var(--brand-50); }
+.bg-brand-100 { background-color: var(--brand-100); }
+.bg-brand-600 { background-color: var(--brand-600); }
+.bg-brand-700 { background-color: var(--brand-700); }
+.text-brand-700 { color: var(--brand-700); }
+.text-brand-800 { color: var(--brand-800); }
+.border-brand-100 { border-color: var(--brand-100); }
+.border-brand-200 { border-color: var(--brand-200); }
+.border-brand-300 { border-color: var(--brand-300); }
+.focus\:ring-brand-200:focus { box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-200) 60%, transparent); }
+.hover\:bg-brand-700:hover { background-color: var(--brand-700); }
+.hover\:bg-brand-500\/30:hover { background-color: color-mix(in oklab, var(--brand-500) 30%, transparent); }
+
+/* Sky helpers */
+.bg-sky-50 { background-color: var(--sky-50); }
+.text-sky-400 { color: var(--sky-400); }
 
 /* Simple container utility for pages */
 .page-container {
   @apply max-w-7xl mx-auto px-4 py-6;
 }
 
-/* Themed utilities */
-.card {
-  @apply bg-white rounded-xl shadow-soft p-4 border border-brand-100;
-}
-.card-title {
-  @apply font-semibold text-gray-800 flex items-center gap-2;
-}
-.section-accent {
-  @apply w-1.5 h-5 rounded-full bg-brand-600 inline-block align-middle;
-}
+/* Light Blue inspired component utilities */
 .btn {
-  @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors;
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md;
 }
-.btn-primary {
-  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+
+.btn-grass {
+  background-color: var(--brand-600);
+  color: white;
 }
-.btn-outline {
-  @apply btn border border-brand-300 text-brand-700 hover:bg-brand-50;
+.btn-grass:hover {
+  background-color: var(--brand-700);
 }
-.input {
-  @apply w-full border border-brand-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-200 rounded-lg px-3 py-2 outline-none bg-white/90;
+
+.btn-sky-outline {
+  border: 1px solid var(--sky-400);
+  color: var(--sky-500);
 }
-.select {
-  @apply border border-brand-200 rounded-lg px-3 py-2 bg-white/90 focus:border-brand-400 focus:ring-2 focus:ring-brand-200 outline-none;
+.btn-sky-outline:hover {
+  background-color: var(--sky-50);
 }
-.badge {
-  @apply inline-block text-xs px-2 py-0.5 rounded-full bg-brand-100 text-brand-800;
+
+.input-light-blue {
+  @apply w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 outline-none transition-colors duration-200;
+  @apply focus:border-sky-400 focus:ring-2 focus:ring-sky-200/50;
 }
+
+/* Shadow utility similar to Light Blue */
+.shadow-soft { box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+
+

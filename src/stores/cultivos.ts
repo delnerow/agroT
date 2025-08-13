@@ -9,6 +9,7 @@ export type Cultivo = {
 export type Fazenda = {
   areaHa: number
   modulosFiscais: number
+  uf: string // Adicionado para filtro de mercado
 }
 
 type State = {
@@ -25,7 +26,7 @@ export const useCultivosStore = create<State>()(
   persist(
     (set) => ({
       cultivos: [],
-      fazenda: { areaHa: 40, modulosFiscais: 4 },
+      fazenda: { areaHa: 40, modulosFiscais: 4, uf: 'SP' },
       addCultivo: (nome) =>
         set((s) => ({
           cultivos: [...s.cultivos, { id: String(nextId++), nome }],
