@@ -10,6 +10,8 @@ const BASE = 'https://portaldeinformacoes.conab.gov.br'
 const URL_PRECOS_MINIMOS = `${BASE}/precos-minimos.html`
 // Produtos 360 (Pentaho CDA)
 const PENTAHO_BASE = 'https://pentahoportaldeinformacoes.conab.gov.br'
+const FRETE_URL = 'https://pentahoportaldeinformacoes.conab.gov.br/pentaho/api/repos/%3Ahome%3Afrete%3Afrete.wcdf/generatedContent';
+
 const IFRAME_URL = `${PENTAHO_BASE}/pentaho/api/repos/%3Ahome%3AProdutos%3Aprodutos360.wcdf/generatedContent?userid=pentaho&password=password`
 const CDA_ENDPOINT = `${PENTAHO_BASE}/pentaho/plugin/cda/api/doQuery`
 
@@ -25,26 +27,39 @@ const axiosPentaho = axios.create({
   validateStatus: () => true,
   timeout: 20000,
 })
-function lastFullWeekMondayISO() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
-  // 0=Dom, 1=Seg, ..., 6=Sáb
-  const dayOfWeek = today.getDay();
+async function openPentahoFrete() {
+  const auth = Buffer.from(`pentaho:password`).toString('base64');
+  const headers = {
+    'Authorization': `Basic ${auth}`,
+    'Accept': '*/*',
+  };
 
-  // Subtrai dias para chegar na última segunda-feira.
-  // Se hoje é domingo (0), subtrai 6 dias para chegar na segunda anterior.
-  // Se hoje é segunda (1), subtrai 7 dias.
-  // Se hoje é sábado (6), subtrai 12 dias.
-  const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek + 6;
+  const r = await axiosPentaho.get(FRETE_URL, { headers });
+  const setCookies = r.headers?.['set-cookie'] || [];
+  const cookieHeader = setCookies.map(c => c.split(';')[0]).join('; ');
 
-  const lastMonday = new Date(today);
-  lastMonday.setDate(today.getDate() - daysToSubtract);
+  if (!cookieHeader) {
+    const msg = `Falha ao abrir sessão Pentaho. Status=${r.status}. Headers recebidos: ${Object.keys(r.headers||{}).join(', ')}`;
+    throw new Error(msg);
+  }
 
-  const y = lastMonday.getFullYear();
-  const m = String(lastMonday.getMonth() + 1).padStart(2, '0');
-  const d = String(lastMonday.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return cookieHeader;
+}
+
+async function postFRETE(cookie, params) {
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'Referer': FRETE_URL,
+    'X-Requested-With': 'XMLHttpRequest',
+    'Origin': PENTAHO_BASE,
+    'Cookie': cookie,
+  }
+  const r = await axiosPentaho.post(CDA_ENDPOINT, params, { headers })
+  if (r.status >= 400) {
+    console.error('Pentaho CDA error', r.status, r.statusText)
+  }
+  return { status: r.status, headers: r.headers, data: r.data }
 }
 
 async function openPentahoSession() {
@@ -80,8 +95,8 @@ app.get('/api/conab/produtos360/conjuntura', async (req, res) => {
     let data = String(req.query.data || '').trim() // YYYY-MM-DD
     if (!produto) return res.status(400).json({ error: 'Parâmetro obrigatório: produto' })
     // Default: segunda-feira da última semana completa
-    if (!data) data = lastFullWeekMondayISO()
-    const produtoUpper = produto.toUpperCase()
+
+    const produtoUpper = produto.toUpperCase().split(' ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
     const cookie = await openPentahoSession()
     const body = [
@@ -105,13 +120,23 @@ app.get('/api/conab/produtos360/conjuntura', async (req, res) => {
 
 // GET /api/conab/produtos360/precos?produto=MILHO
 app.get('/api/conab/produtos360/precos', async (req, res) => {
+ 
   try {
     const produto = String(req.query.produto || '').trim()
     if (!produto) return res.status(400).json({ error: 'Parâmetro obrigatório: produto' })
-
+    
+  
     const cookie = await openPentahoSession()
     // Pentaho espera o valor no formato [Produto].[MILHO]
-    const produtoUpper = produto.toUpperCase()
+    let produtoUpper = produto.toUpperCase()
+    
+    if(produtoUpper === 'ARROZ') {
+      produtoUpper = 'ARROZ LONGO FINO EM CASCA'
+    }
+    if(produtoUpper === 'CAFE') {
+      produtoUpper = 'CAFÉ ARÁBICA'
+    }
+    
     const produtoDim = `[Produto].[${produtoUpper}]`
     const body = [
       'path=/home/Produtos/produtos360.cda',
@@ -133,33 +158,159 @@ app.get('/api/conab/produtos360/precos', async (req, res) => {
 })
 
 
-app.get('/api/conab/produtos360/oferta', async (req, res) => {
+app.get('/api/conab/oferta-demanda', async (req, res) => {
   try {
-    const produto = String(req.query.produto || '').trim()
-    if (!produto) return res.status(400).json({ error: 'Parâmetro obrigatório: produto' })
-
+    const produto = String(req.query.produto || '').trim().toUpperCase().split(' ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    const url = `https://pentahoportaldeinformacoes.conab.gov.br/pentaho/plugin/cgg/api/services/draw?outputType=png&script=%2Fhome%2FOfertaDemanda%2FgrafODSafra.js&paramproduto=%5BProduto%5D.%5B${produto}%5D&paramsafraInicial=%5BSafra%5D.%5B1999%2F00%5D&paramsafraFinal=%5BSafra%5D.%5B2024%2F25%5D&paramwidth=1000&paramheight=300`;
     const cookie = await openPentahoSession()
-    // Pentaho espera o valor no formato [Produto].[MILHO]
-    const produtoUpper = produto.toUpperCase()
-    const produtoDim = `[Produto].[${produtoUpper}]`
+    // Faz a requisição para a Conab
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'image/png,image/*,*/*;q=0.8',
+        'Connection': 'keep-alive',
+        'Referer': 'https://pentahoportaldeinformacoes.conab.gov.br/',
+        // Se precisar, adicione cookies ou user-agent
+        'User-Agent': 'Mozilla/5.0',
+        'Cookie': cookie
+      }
+    });
+
+    const buffer = await response.arrayBuffer();
+const bufferContent = Buffer.from(buffer);
+
+// Conab sempre retorna PNG, mas podemos tentar detectar "No Data Found"
+const contentString = bufferContent.toString('utf8');
+if (contentString.includes("No Data Found")) {
+  res.status(204).send(); // 204 No Content
+} else {
+  res.set('Content-Type', 'image/png');
+  res.send(bufferContent);
+}
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Erro ao obter imagem de Oferta e Demanda');
+  }
+});
+
+app.get('/api/conab/frete/origens', async (_req, res) => {
+  console.log('Rota /origens chamada'); // <<< log inicial
+  try {
+
     const body = [
-      'path=/home/Produtos/produtos360.cda',
+      'paramfonte=%5BFonte%5D.%5BPESQUISA%5D%2C+%5BFonte%5D.%5BCONTRATO%5D',
+      'path=%2Fhome%2Ffrete%2Ffrete.cda',
+      'dataAccessId=municipioOrigem',
+      'outputIndexId=1',
+      'pageSize=0',
+      'pageStart=0',
+      `sortBy=`,
+      'paramsearchBox=',
+    ].join('&')
+    const cookie = await openPentahoFrete()
+    const cda = await postFRETE(cookie, body)
+    res.json({ ok: true, cdaStatus: cda.status, data: cda.data })
+  } catch (e) {
+    console.error('Erro /origens:', e);
+if (e.response) {
+  console.error('Response data:', e.response.data);
+}
+  }
+})
+
+app.get('/api/conab/frete/destinos', async (req, res) => {
+  const origem = req.query.origem; // recebido do frontend
+  if (!origem) return res.json({ metadata: {}, resultset: [] });
+
+  try {
+const body = [
+      'parammunicipioOrigem=%5BMunicipio+Origem.New+Hierarchy+0%5D.%5B' + origem + '%5D',
+      'paramfonte=%5BFonte%5D.%5BPESQUISA%5D%2C+%5BFonte%5D.%5BCONTRATO%5D',
+      'path=%2Fhome%2Ffrete%2Ffrete.cda',
+      'dataAccessId=municipioDestino',
+      'outputIndexId=1',
+      'pageSize=0',
+      'pageStart=0',
+      `sortBy=`,
+      'paramsearchBox=',
+    ].join('&')
+    const cookie = await openPentahoFrete()
+    const cda = await postFRETE(cookie, body)
+    res.json({ ok: true, cdaStatus: cda.status, data: cda.data })
+  } catch (e) {
+    console.error('Erro /destinos:', e);
+if (e.response) {
+  console.error('Response data:', e.response.data);
+}
+  }
+})
+app.get('/api/conab/frete/ultimo-ano', async (req, res) => {
+  const origem = req.query.origem;
+  const destino = req.query.destino;
+
+  if (!origem || !destino) return res.json({ metadata: {}, resultset: [] });
+
+  try {
+    const body = [
+      'parammunicipioOrigemConsulta=' + origem,
+      'parammunicipioDestinoConsulta=' + destino,
+      'paramorigemPreenchida=1',
+      'paramdestinoPreenchido=1',
+      'path=%2Fhome%2Ffrete%2Ffrete.cda',
+      'dataAccessId=ultimoAnoComDado',
       'outputIndexId=1',
       'pageSize=0',
       'pageStart=0',
       'sortBy=',
-      'paramsearchBox=',
-      `paramprodutoPreco=${encodeURIComponent(produtoDim)}`,
-      'dataAccessId=precoProduto',
-      'outputType=json',
-    ].join('&')
-    const cda = await postCDA(cookie, body)
+      'paramsearchBox='
+    ].join('&');
+
+    const cookie = await openPentahoFrete();
+    const cda = await postFRETE(cookie, body);
+
     res.json({ ok: true, cdaStatus: cda.status, data: cda.data })
   } catch (e) {
-    console.error('Erro /produtos360/precos:', e)
-    res.status(500).json({ error: 'Falha ao consultar preços', details: String(e) })
+    console.error('Erro /ultimo-ano:', e);
+    res.status(500).json({ ok: false, error: e.message });
   }
-})
+});
+
+// GET /api/conab/frete/tabela?origem=RIO-DE-JANEIRO&destino=SAO-PAULO
+app.get('/api/conab/frete/tabela', async (req, res) => {
+  const { origem, destino, ano } = req.query;
+
+  if (!origem || !destino || !ano) return res.json({ metadata: [], resultset: [] });
+
+  try {
+    const body = [
+      `parammunicipioOrigemConsulta=${origem}`,
+      `parammunicipioDestinoConsulta=${destino}`,
+      'paramtodosMunicipiosOrigem=-',
+      'paramtodosMunicipiosDestino=-',
+      'paramfonteConsulta=1',
+      'paramfonteConsulta=2',
+      `paramanoInicio=${ano}`,
+      'parammesInicio=01',
+      'parammesFim=12',
+      `paramanoFim=${ano}`,
+      'path=%2Fhome%2Ffrete%2Ffrete.cda',
+      'dataAccessId=tabelaFretes',
+      'outputIndexId=1',
+      'pageSize=0',
+      'pageStart=0',
+      'paramsearchBox='
+    ].join('&');
+
+    const cookie = await openPentahoFrete();
+    const cda = await postFRETE(cookie, body);
+
+    res.json({ ok: true, cdaStatus: cda.status, data: cda.data });
+  } catch (e) {
+    console.error('Erro /tabela:', e);
+    if (e.response) console.error('Response data:', e.response.data);
+    res.status(500).json({ ok: false, error: 'Erro ao buscar tabela de fretes' });
+  }
+});
+
 
 
 

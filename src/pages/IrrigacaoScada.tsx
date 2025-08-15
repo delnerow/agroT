@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useCultivosStore } from '../stores/cultivos'
-import { calcularUmidadeIdeal } from '../utils/umidade' // função que calcula % baseado em planta, estágio e solo
+import { calcularUmidadeIdeal } from '../utils/umidade'
 
 type IrrigacaoInfo = {
   umidadeAtual: number
@@ -23,10 +23,10 @@ export default function Irrigacao() {
       for (const c of cultivos) {
         if (!next[c.id]) {
           next[c.id] = {
-            umidadeAtual: 40,
+            umidadeAtual: 0, // será atualizado pelo ScadaBR
             umidadeNecessaria: calcularUmidadeIdeal(c.tipoPlanta, c.estagioAtual, c.tipoSolo),
             ultimaIrrigacao: '—',
-            proximaIrrigacao: modoAuto ? 'Hoje 18:00' : undefined,
+            proximaIrrigacao: modoAuto ? '—' : undefined,
             metodo: metodoGlobal,
           }
         }
@@ -39,7 +39,33 @@ export default function Irrigacao() {
     })
   }, [cultivos, modoAuto, metodoGlobal])
 
-  // Calcula déficit de umidade por cultivo
+  // Busca dados do ScadaBR a cada minuto
+  useEffect(() => {
+    async function fetchDadosScada() {
+      try {
+        const res = await fetch('/api/scadabr')
+        const scadaData = await res.json()
+        setDados(prev => {
+          const next = { ...prev }
+          for (const c of cultivos) {
+            if (next[c.id] && scadaData[c.id]) {
+              next[c.id].umidadeAtual = scadaData[c.id].umidadeAtual
+              next[c.id].ultimaIrrigacao = scadaData[c.id].ultimaIrrigacao
+            }
+          }
+          return next
+        })
+      } catch (err) {
+        console.error('Erro ao buscar dados do ScadaBR', err)
+      }
+    }
+
+    fetchDadosScada()
+    const interval = setInterval(fetchDadosScada, 60000)
+    return () => clearInterval(interval)
+  }, [cultivos])
+
+  // Calcula déficit de umidade
   const deficit = useMemo(() =>
     Object.fromEntries(cultivos.map(c => {
       const d = dados[c.id]
@@ -48,19 +74,25 @@ export default function Irrigacao() {
     })), [cultivos, dados]
   )
 
-  function regarAgora(id: string) {
-    setDados(prev => {
-      const cur = prev[id]
-      if (!cur) return prev
-      return {
+  // Função para regar um cultivo, enviando comando para ScadaBR
+  async function regarAgora(id: string) {
+    try {
+      await fetch('/api/scadabr/regar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cultivoId: id, metodo: metodoGlobal })
+      })
+      setDados(prev => ({
         ...prev,
         [id]: {
-          ...cur,
-          umidadeAtual: Math.min(100, cur.umidadeAtual + 8),
+          ...prev[id],
           ultimaIrrigacao: 'Agora',
-        },
-      }
-    })
+          umidadeAtual: Math.min(100, prev[id].umidadeAtual + 8)
+        }
+      }))
+    } catch (err) {
+      console.error('Erro ao acionar irrigação', err)
+    }
   }
 
   return (
@@ -111,10 +143,10 @@ export default function Irrigacao() {
                   <div className="text-sm">Umidade necessária: <span className="font-semibold">{d?.umidadeNecessaria ?? '—'}%</span></div>
                   <div className="text-xs text-gray-600">Déficit: {deficit[c.id]}%</div>
                   <div className="text-xs text-gray-500">Última irrigação: {d?.ultimaIrrigacao ?? '—'}</div>
-                  {modoAuto ? (
+                  {modoAuto && (
                     <div className="text-xs text-gray-500">Próxima (prevista): {d?.proximaIrrigacao ?? '—'}</div>
-                  ) : null}
-              
+                  )}
+                  <div className="text-xs text-gray-500">Método: {d?.metodo}</div>
                   <div className="pt-2">
                     <button
                       className={`w-full ${modoAuto ? 'btn text-gray-500 cursor-not-allowed bg-gray-100' : 'btn-primary'}`}
