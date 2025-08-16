@@ -55,9 +55,3 @@ Plataforma web para gestão inteligente de recursos na agricultura familiar (40 
 - Sensores/IoT: usar dados simulados inicialmente; definir mapeamento real de sensores no grid
 - Irrigação: persistência de “última/próxima irrigação” e lógica automática com base em umidade e previsão de chuva
 
-## Convenções
-- Variáveis de ambiente expostas no front começam com `VITE_`
-- Código em TypeScript (`.ts`/`.tsx`)
-
-## Suporte
-Problemas e sugestões: abra uma issue descrevendo o cenário e o passo a passo para reproduzir.
