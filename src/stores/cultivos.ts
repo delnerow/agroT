@@ -8,8 +8,8 @@ export type Cultivo = {
   estagioAtual: 'Germinacao' | 'Vegetativo' | 'Florescimento' | 'Maturacao'
   tipoSolo: 'Arenoso' | 'Argiloso' | 'Silte'
   areaHa: number
-  custoMesAnterior: number
-  receitaMesAnterior: number
+  custoSafraAnterior: number
+  receitaSafraAnterior: number
   umidadeNecessaria: number
 }
 
@@ -30,8 +30,8 @@ type State = {
     estagioAtual: Cultivo['estagioAtual']
     tipoSolo: Fazenda['tipoSolo']
     areaHa: number
-    custoMesAnterior: number
-    receitaMesAnterior: number
+    custoSafraAnterior: number
+    receitaSafraAnterior: number
   }) => void
   removeCultivo: (id: string) => void
   updateCultivo: (id: string, data: Partial<Cultivo>) => void
@@ -62,7 +62,7 @@ export const useCultivosStore = create<State>()(
       cultivos: [],
       fazenda: { areaHa: 40, modulosFiscais: 4, uf: 'SP', tipoSolo: 'Arenoso' },
 
-      addCultivo: ({ nome, tipoPlanta, estagioAtual, tipoSolo, areaHa, custoMesAnterior, receitaMesAnterior }) =>
+      addCultivo: ({ nome, tipoPlanta, estagioAtual, tipoSolo, areaHa, custoSafraAnterior, receitaSafraAnterior }) =>
         set((s) => ({
           cultivos: [
             ...s.cultivos,
@@ -73,8 +73,8 @@ export const useCultivosStore = create<State>()(
               estagioAtual,
               tipoSolo,
               areaHa,
-              custoMesAnterior,
-              receitaMesAnterior,
+              custoSafraAnterior,
+              receitaSafraAnterior,
               umidadeNecessaria: umidadeIdeal[tipoPlanta][estagioAtual],
             },
           ],

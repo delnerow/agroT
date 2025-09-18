@@ -9,7 +9,7 @@ export default function Sidebar() {
   ] as const
 
   return (
-    <aside className="flex flex-col w-60 shrink-0 h-screen sticky top-0 bg-white border-r border-brand-100">
+  <aside className="flex flex-col w-60 shrink-0 h-screen sticky top-0 bg-green-50 border-r border-brand-100">
       <div className="h-14 flex items-center gap-2 px-4 border-b border-brand-100">
         <div className="text-2xl">🌿</div>
         <div className="font-semibold">AgroT</div>
@@ -33,10 +33,6 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="mt-auto p-3 text-xs text-gray-500">
-        <div className="flex items-center gap-2">
-          <span className="text-sky-400">☁️</span>
-          <span>Campo + Céu</span>
-        </div>
       </div>
     </aside>
   )

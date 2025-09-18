@@ -54,13 +54,13 @@ export default function Principal() {
             <span>Filtro:</span>
             <button
               onClick={() => setLayer("temperatura")}
-              className={layer === "temperatura" ? "btn-primary" : "btn-outline"}
+              className={`btn-outline px-3 py-1 rounded ${layer === "temperatura" ? "bg-green-100 border-green-400" : ""}`}
             >
               Temperatura
             </button>
             <button
               onClick={() => setLayer("umidade")}
-              className={layer === "umidade" ? "btn-primary" : "btn-outline"}
+              className={`btn-outline px-3 py-1 rounded ${layer === "umidade" ? "bg-green-100 border-green-400" : ""}`}
             >
               Umidade
             </button>
@@ -73,7 +73,8 @@ export default function Principal() {
           <img
             src="../images/fazenda.png"
             alt="Imagem da fazenda"
-            className="absolute inset-0 w-full h-full object-cover rounded-lg"
+            className="absolute inset-0 w-full h-full object-cover rounded-lg z-0"
+            style={{ zIndex: 0 }}
           />
           {/* Grid sobre a imagem */}
           <div className="relative z-10">

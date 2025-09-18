@@ -34,7 +34,11 @@ Plataforma web para gestão inteligente de recursos na agricultura familiar (40 
    ```bash
    npm run dev
    ```
-4. Acesse em: http://localhost:5173/
+4. Rode o backend
+   ```bash
+   node server/index.js
+   ```
+5. Acesse em: http://localhost:5173/
 
 ## Scripts úteis
 - `npm run dev`: inicia Vite em modo desenvolvimento

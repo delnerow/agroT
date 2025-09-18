@@ -1,3 +1,15 @@
+  // Mapeamento de ícones para cada cultivo
+  const cultivoIcons: Record<string, string> = {
+    "Feijão Preto": "🌱",
+    "Feijão Cores": "🌱",
+    "Arroz": "🌾",
+    "Mandioca": "🥔",
+    "Milho": "🌽",
+    "Cafe": "☕",
+    "Trigo": "🌾",
+    "Banana": "🍌",
+    "Abacaxi": "🍍"
+  }
 import { useEffect, useMemo, useState } from 'react'
 import { useCultivosStore } from '../stores/cultivos'
 import { calcularUmidadeIdeal } from '../utils/umidade' // função que calcula % baseado em planta, estágio e solo
@@ -106,15 +118,17 @@ export default function Irrigacao() {
               const d = dados[c.id]
               return (
                 <div key={c.id} className="border rounded-lg p-3 space-y-2">
-                  <div className="font-medium">{c.nome}</div>
-                  <div className="text-sm">Umidade atual: <span className="font-semibold">{d?.umidadeAtual ?? '—'}%</span></div>
+                  <div className="font-medium flex items-center gap-2">
+                    <span>{cultivoIcons[c.nome] || "🌱"}</span>
+                    {c.nome}
+                  </div>
+                  <div className="text-sm">Umidade atual: <span className={`font-semibold px-1 rounded ${d ? (d.umidadeAtual < d.umidadeNecessaria ? 'bg-red-200' : d.umidadeAtual > d.umidadeNecessaria ? 'bg-purple-200' : '') : ''}`}>{d?.umidadeAtual ?? '—'}%</span></div>
                   <div className="text-sm">Umidade necessária: <span className="font-semibold">{d?.umidadeNecessaria ?? '—'}%</span></div>
                   <div className="text-xs text-gray-600">Déficit: {deficit[c.id]}%</div>
                   <div className="text-xs text-gray-500">Última irrigação: {d?.ultimaIrrigacao ?? '—'}</div>
                   {modoAuto ? (
                     <div className="text-xs text-gray-500">Próxima (prevista): {d?.proximaIrrigacao ?? '—'}</div>
                   ) : null}
-              
                   <div className="pt-2">
                     <button
                       className={`w-full ${modoAuto ? 'btn text-gray-500 cursor-not-allowed bg-gray-100' : 'btn-primary'}`}
