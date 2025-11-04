@@ -71,7 +71,7 @@ export default function FarmGrid({ rows, cols, layer }: Props) {
               key={idx}
               className="rounded-[2px]"
               style={{ backgroundColor: colorFor(val, layer) }}
-              onMouseEnter={e => {
+              onMouseEnter={() => {
                 if (!containerRef.current) return
                 const containerRect = containerRef.current.getBoundingClientRect()
                 const cellWidth = containerRect.width / cols

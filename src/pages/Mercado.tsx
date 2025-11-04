@@ -4,7 +4,15 @@ import { useCultivosStore } from '../stores/cultivos'
 
 // Os cultivos agora vêm da aba "Cultivos" via Zustand store
 
-type Serie = { label: string; value: number }
+// Interface para resposta da API
+interface ApiResponse {
+  ok: boolean;
+  data?: {
+    metadata?: any[];
+    resultset?: any[];
+  };
+  resultset?: any[];
+}
 
 // Removidos mocks de produtos/preço mínimo; dados reais virão do backend
 
