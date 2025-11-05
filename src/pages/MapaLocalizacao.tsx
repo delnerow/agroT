@@ -1,28 +1,29 @@
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import { useCultivosStore } from "../stores/cultivos"
+import type { Farm } from "../stores/cultivos"
 
 function LocationPicker() {
-  const { fazenda, setFazenda } = useCultivosStore()
+  const { farm, updateFarm } = useCultivosStore()
 
   useMapEvents({
     click(e) {
-      setFazenda({ localizacao: { lat: e.latlng.lat, lng: e.latlng.lng } })
+      updateFarm({ localizacao: { lat: e.latlng.lat, lng: e.latlng.lng } })
     },
   })
 
-  return fazenda.localizacao ? (
-    <Marker position={[fazenda.localizacao.lat, fazenda.localizacao.lng]} />
+  return farm.localizacao ? (
+    <Marker position={[farm.localizacao.lat, farm.localizacao.lng]} />
   ) : null
 }
 
 export default function MapaFazenda() {
-  const { fazenda } = useCultivosStore()
+  const { farm } = useCultivosStore()
 
   return (
     <div className="mt-4 flex flex-col items-center">
       <MapContainer
-        center={fazenda.localizacao || [-15.78, -47.93]} // Brasilia como default
+        center={farm.localizacao || [-15.78, -47.93]} // Brasilia como default
         zoom={5}
         style={{ width: "300px", height: "300px", borderRadius: "8px" }} // quadrado menor
       >
@@ -33,10 +34,10 @@ export default function MapaFazenda() {
         <LocationPicker />
       </MapContainer>
 
-      {fazenda.localizacao && (
+      {farm.localizacao && (
         <p className="text-xs text-gray-600 mt-2">
-          Localização escolhida: {fazenda.localizacao.lat.toFixed(4)},{" "}
-          {fazenda.localizacao.lng.toFixed(4)}
+          Localização escolhida: {farm.localizacao.lat.toFixed(4)},{" "}
+          {farm.localizacao.lng.toFixed(4)}
         </p>
       )}
     </div>

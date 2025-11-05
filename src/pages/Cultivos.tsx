@@ -33,7 +33,7 @@ export default function Cultivos() {
   const [novoArea, setNovoArea] = useState(0)
   const [novoCusto, setNovoCusto] = useState(0)
   const [novaReceita, setNovaReceita] = useState(0)
-  const [novoTipoSolo, setNovoTipoSolo] = useState<typeof tiposSolo[number]>(farm.tipoSolo || "Arenoso")
+  const [novoTipoSolo] = useState<typeof tiposSolo[number]>(farm.tipoSolo || "Arenoso")
 
   async function onAdd(e: FormEvent) {
     e.preventDefault()  
