@@ -25,19 +25,19 @@ const estagios = ["Germinacao", "Vegetativo", "Florescimento", "Maturacao"] as c
 const tiposSolo = ["Arenoso", "Argiloso", "Silte"] as const
 
 export default function Cultivos() {
-  const { cultivos, fazenda, addCultivo, removeCultivo, setFazenda, updateCultivo } = useCultivosStore()
+  const { plants, farm, addPlant, removePlant, updateFarm, updatePlant } = useCultivosStore()
   
-  // Estado para novo cultivo
+  // Estado para nova planta
   const [novoTipoPlanta, setNovoTipoPlanta] = useState<typeof cultivosDisponiveis[number]>("Feijão Preto")
   const [novoEstagio, setNovoEstagio] = useState<typeof estagios[number]>("Germinacao")
   const [novoArea, setNovoArea] = useState(0)
   const [novoCusto, setNovoCusto] = useState(0)
   const [novaReceita, setNovaReceita] = useState(0)
-  const [novoTipoSolo, setNovoTipoSolo] = useState<typeof tiposSolo[number]>(fazenda.tipoSolo || "Arenoso")
+  const [novoTipoSolo, setNovoTipoSolo] = useState<typeof tiposSolo[number]>(farm.tipoSolo || "Arenoso")
 
-  function onAdd(e: FormEvent) {
+  async function onAdd(e: FormEvent) {
     e.preventDefault()  
-    addCultivo({
+    await addPlant({
       nome: novoTipoPlanta,
       tipoPlanta: novoTipoPlanta,
       estagioAtual: novoEstagio,
@@ -60,22 +60,22 @@ export default function Cultivos() {
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="grid grid-cols-2 gap-4 col-span-2">
             <label className="text-sm text-gray-600">Área (hectares)
-              <input type="number" className="mt-1 input-light-blue" value={fazenda.areaHa}
-                onChange={(e) => setFazenda({ areaHa: Number(e.target.value) })} />
+              <input type="number" className="mt-1 input-light-blue" value={farm.areaHa}
+                onChange={(e) => updateFarm({ areaHa: Number(e.target.value) })} />
             </label>
             <label className="text-sm text-gray-600">Módulos fiscais
-              <input type="number" className="mt-1 input-light-blue" value={fazenda.modulosFiscais}
-                onChange={(e) => setFazenda({ modulosFiscais: Number(e.target.value) })} />
+              <input type="number" className="mt-1 input-light-blue" value={farm.modulosFiscais}
+                onChange={(e) => updateFarm({ modulosFiscais: Number(e.target.value) })} />
             </label>
             <label className="text-sm text-gray-600">UF
-              <select className="mt-1 input-light-blue" value={fazenda.uf}
-                onChange={(e) => setFazenda({ uf: e.target.value })}>
+              <select className="mt-1 input-light-blue" value={farm.uf}
+                onChange={(e) => updateFarm({ uf: e.target.value })}>
                 {ufs.map(uf => <option key={uf} value={uf}>{uf}</option>)}
               </select>
             </label>
             <label className="text-sm text-gray-600">Tipo de solo
-              <select className="mt-1 input-light-blue" value={novoTipoSolo}
-                onChange={(e) => setNovoTipoSolo(e.target.value as typeof tiposSolo[number])}>
+              <select className="mt-1 input-light-blue" value={farm.tipoSolo}
+                onChange={(e) => updateFarm({ tipoSolo: e.target.value as typeof tiposSolo[number] })}>
                 {tiposSolo.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </label>
@@ -83,9 +83,9 @@ export default function Cultivos() {
           <div>
             <h3 className="text-sm text-gray-600 mb-2">Localização no mapa</h3>
             <MapaLocalizacao />
-            {fazenda.localizacao && (
+            {farm.localizacao && (
               <p className="text-xs text-gray-500 mt-2">
-                Latitude: {fazenda.localizacao.lat.toFixed(5)} | Longitude: {fazenda.localizacao.lng.toFixed(5)}
+                Latitude: {farm.localizacao.lat.toFixed(5)} | Longitude: {farm.localizacao.lng.toFixed(5)}
               </p>
             )}
           </div>
@@ -125,40 +125,40 @@ export default function Cultivos() {
         </form>
 
         <ul className="space-y-2">
-          {cultivos.length === 0 ? (
+          {plants.length === 0 ? (
             <li className="py-3 px-4 text-sm text-gray-500 text-center bg-gray-50 rounded-md">Nenhum cultivo cadastrado.</li>
-          ) : cultivos.map(c => (
+          ) : plants.map(c => (
             <li key={c.id} className="py-3 px-4 flex flex-col bg-gray-50 hover:bg-gray-100 rounded-md transition-colors duration-200 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="font-medium text-gray-700 flex items-center gap-2">
                   <span>{cultivoIcons[c.nome] || "🌱"}</span>
                   {c.nome}
                 </span>
-                <button className="btn btn-sky-outline text-xs" onClick={() => removeCultivo(c.id)}>Remover</button>
+                <button className="btn btn-sky-outline text-xs" onClick={() => removePlant(c.id)}>Remover</button>
               </div>
 
               <div className="grid sm:grid-cols-4 gap-2 text-sm">
                 <label>
                   Área (ha)
                   <input type="number" className="input-light-blue mt-1" value={c.areaHa}
-                    onChange={(e) => updateCultivo(c.id, { areaHa: Number(e.target.value) })} />
+                    onChange={(e) => updatePlant(c.id, { areaHa: Number(e.target.value) })} />
                 </label>
                 <label>
                   Estágio
                   <select className="input-light-blue mt-1" value={c.estagioAtual}
-                    onChange={e => updateCultivo(c.id, { estagioAtual: e.target.value as typeof estagios[number] })}>
+                    onChange={e => updatePlant(c.id, { estagioAtual: e.target.value as typeof estagios[number] })}>
                     {estagios.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </label>
                 <label>
                   Custo safra anterior
                   <input type="number" className="input-light-blue mt-1" value={c.custoSafraAnterior}
-                    onChange={(e) => updateCultivo(c.id, { custoSafraAnterior: Number(e.target.value) })} />
+                    onChange={(e) => updatePlant(c.id, { custoSafraAnterior: Number(e.target.value) })} />
                 </label>
                 <label>
                   Receita safra anterior
                   <input type="number" className="input-light-blue mt-1" value={c.receitaSafraAnterior}
-                    onChange={(e) => updateCultivo(c.id, { receitaSafraAnterior: Number(e.target.value) })} />
+                    onChange={(e) => updatePlant(c.id, { receitaSafraAnterior: Number(e.target.value) })} />
                 </label>
               </div>
             </li>

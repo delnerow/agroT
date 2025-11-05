@@ -1,4 +1,4 @@
-import { prisma } from '../lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import express, { Request, Response } from 'express'
 
 const router = express.Router()
@@ -6,7 +6,7 @@ const router = express.Router()
 // Get farm details
 router.get('/farm', async (req, res) => {
   try {
-    const farm = await prisma.farm.findFirst({
+    const farm = await PrismaClient.farm.findFirst({
       include: {
         plants: true
       }
@@ -20,7 +20,7 @@ router.get('/farm', async (req, res) => {
 // Update farm details
 router.put('/farm', async (req, res) => {
   try {
-    const farm = await prisma.farm.upsert({
+    const farm = await PrismaClient.farm.upsert({
       where: {
         id: req.body.id || 'default-farm'
       },
@@ -46,7 +46,7 @@ router.put('/farm', async (req, res) => {
 // Get all plants
 router.get('/plants', async (req, res) => {
   try {
-    const plants = await prisma.plant.findMany({
+    const plants = await PrismaClient.plant.findMany({
       include: {
         sensorData: {
           orderBy: {
@@ -65,7 +65,7 @@ router.get('/plants', async (req, res) => {
 // Add new plant
 router.post('/plants', async (req, res) => {
   try {
-    const plant = await prisma.plant.create({
+    const plant = await PrismaClient.plant.create({
       data: {
         ...req.body,
         farmId: req.body.farmId || 'default-farm'
@@ -80,7 +80,7 @@ router.post('/plants', async (req, res) => {
 // Update plant
 router.put('/plants/:id', async (req, res) => {
   try {
-    const plant = await prisma.plant.update({
+    const plant = await PrismaClient.plant.update({
       where: {
         id: req.params.id
       },
@@ -95,7 +95,7 @@ router.put('/plants/:id', async (req, res) => {
 // Delete plant
 router.delete('/plants/:id', async (req, res) => {
   try {
-    await prisma.plant.delete({
+    await PrismaClient.plant.delete({
       where: {
         id: req.params.id
       }
@@ -109,7 +109,7 @@ router.delete('/plants/:id', async (req, res) => {
 // Add sensor data
 router.post('/sensor-data', async (req, res) => {
   try {
-    const sensorData = await prisma.sensorData.create({
+    const sensorData = await PrismaClient.sensorData.create({
       data: {
         plantId: req.body.plantId,
         temperature: req.body.temperature,
@@ -125,7 +125,7 @@ router.post('/sensor-data', async (req, res) => {
 // Get sensor data for a plant
 router.get('/sensor-data/:plantId', async (req, res) => {
   try {
-    const sensorData = await prisma.sensorData.findMany({
+    const sensorData = await PrismaClient.sensorData.findMany({
       where: {
         plantId: req.params.plantId
       },

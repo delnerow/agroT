@@ -2,15 +2,15 @@ import { useEffect, useState } from "react"
 import { useCultivosStore } from "../stores/cultivos"
 
 export function useWeather() {
-  const { fazenda } = useCultivosStore()
+  const { farm } = useCultivosStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState<{ temp: number; rainChance: number } | null>(null)
   const [forecast, setForecast] = useState<{ day: string; temp: number; rainChance: number }[]>([])
 
   useEffect(() => {
-    if (!fazenda.localizacao) return
-    const { lat, lng } = fazenda.localizacao
+    if (!farm.localizacao) return
+    const { lat, lng } = farm.localizacao
 
     async function fetchWeather() {
       try {
@@ -44,7 +44,7 @@ export function useWeather() {
     }
 
     fetchWeather()
-  }, [fazenda.localizacao])
+  }, [farm.localizacao])
 
   return { now, forecast, loading, error }
 }

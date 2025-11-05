@@ -35,9 +35,8 @@ function formatColName(colName: string) {
   }
 }
 export default function Mercado() {
-  const cultivosStore = useCultivosStore(s => s.cultivos)
-  const fazenda = useCultivosStore(s => s.fazenda)
-  const cultivoNames = useMemo(() => cultivosStore.map(c => c.nome).filter(Boolean), [cultivosStore])
+  const { plants, farm } = useCultivosStore()
+  const cultivoNames = useMemo(() => plants.map(p => p.nome).filter(Boolean), [plants])
   const [cultivo, setCultivo] = useState<string>('')
   const [destinoSelecionado, setDestinoSelecionado] = useState<string>(''); 
   const [origem, setOrigem] = useState('')
@@ -344,7 +343,7 @@ function lastFullWeekMondayISO(base: Date = new Date()) {
           <div className="text-sm text-gray-600 mb-2">Tabela (Estado, P. Médio Semanal, P. Mínimo, etc.)</div>
           {loadingTabela && <div className="text-sm text-gray-500">Carregando tabela...</div>}
           {errorTabela && <div className="text-sm text-red-600">Falha ao consultar tabela de preços.</div>}
-          {!loadingTabela && !errorTabela && renderCdaTable(precosResp?.data, fazenda.uf)}
+          {!loadingTabela && !errorTabela && renderCdaTable(precosResp?.data, farm.uf)}
         </div>
       </section>
 
