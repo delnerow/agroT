@@ -4,15 +4,23 @@ import { useCultivosStore } from '../stores/cultivos'
 
 // Os cultivos agora vêm da aba "Cultivos" via Zustand store
 
-// Interface para resposta da API
+// Interfaces para respostas da API
+interface ApiMetadata {
+  colName: string;
+  colIndex: number;
+}
+
+interface ApiData {
+  metadata?: ApiMetadata[];
+  resultset?: any[][];
+}
+
 interface ApiResponse {
   ok: boolean;
-  data?: {
-    metadata?: any[];
-    resultset?: any[];
-  };
-  resultset?: any[];
+  data?: ApiData;
+  resultset?: any[][];
 }
+
 
 // Removidos mocks de produtos/preço mínimo; dados reais virão do backend
 
@@ -31,7 +39,6 @@ export default function Mercado() {
   const fazenda = useCultivosStore(s => s.fazenda)
   const cultivoNames = useMemo(() => cultivosStore.map(c => c.nome).filter(Boolean), [cultivosStore])
   const [cultivo, setCultivo] = useState<string>('')
-  const [destinos, setDestinos] = useState<string[]>([])
   const [destinoSelecionado, setDestinoSelecionado] = useState<string>(''); 
   const [origem, setOrigem] = useState('')
   const [toneladas, setToneladas] = useState<number>(0);
@@ -55,7 +62,7 @@ export default function Mercado() {
   queryFn: async () => {
     const res = await fetch('/api/conab/frete/origens');
     if (!res.ok) throw new Error('Falha ao buscar origens');
-    return res.json() as Promise<{ ok: boolean; data: { metadata?: any[]; resultset?: any[] } }>;
+    return res.json() as Promise<ApiResponse>;
   },
 });
 
@@ -64,10 +71,10 @@ const origensList = origensData?.data?.resultset?.map((item) => item[1]) || [];
 const { data: destinosData, isLoading: loadingDestinos } = useQuery({
   queryKey: ['destinos-frete', origem],
   queryFn: async () => {
-    if (!origem) return { resultset: [] };
+    if (!origem) return { ok: true, data: { resultset: [] } } as ApiResponse;
     const res = await fetch(`/api/conab/frete/destinos?origem=${encodeURIComponent(origem)}`);
     if (!res.ok) throw new Error('Falha ao buscar origens');
-    return res.json() as Promise<{ ok: boolean; data: { metadata?: any[]; resultset?: any[] } }>;
+    return res.json() as Promise<ApiResponse>;
   },
   enabled: !!origem, // só roda quando há origem selecionada
 });
@@ -86,36 +93,28 @@ const { data: destinosData, isLoading: loadingDestinos } = useQuery({
   })
   
 
-const { data: tabelaData, isLoading: loadingTabela1 } = useQuery({
+  const { data: tabelaData, isLoading: loadingTabela1 } = useQuery({
   queryKey: ['tabela-frete', origem, destinoSelecionado, anoData],
   queryFn: async () => {
-    if (!origem || !destinoSelecionado || !anoData) return { resultset: [] };
+    if (!origem || !destinoSelecionado || !anoData) return { ok: true, data: { resultset: [] } } as ApiResponse;
     
     const res = await fetch(
       `/api/conab/frete/tabela?origem=${encodeURIComponent(origem)}&destino=${encodeURIComponent(destinoSelecionado)}&ano=${encodeURIComponent(anoData?.data?.resultset?.[0]?.[0])}`
     );
     if (!res.ok) throw new Error('Falha ao buscar tabela de fretes');
-    return res.json() as Promise<{ ok: boolean; data: { metadata?: any[]; resultset?: any[] } }>;
+    return res.json() as Promise<ApiResponse>;
   },
   enabled: !!origem && !!destinoSelecionado && !!anoData,
 });
-
-
-  async function fetchDestinos(origem: string) {
-    const res = await fetch(`/api/conab/frete/destinos?origem=${encodeURIComponent(origem)}`)
-    const data = await res.json()
-    setDestinos(data)
-  }
- useEffect(() => {
-  if (origem) fetchDestinos(origem)
-}, [origem])
+  // Removed unused fetchDestinos function and effect
 
 function calcularFrete() {
-  if (!tabelaData?.data?.resultset?.length) return;
+  const resultset = tabelaData?.data?.resultset || [];
+  if (!resultset.length) return;
 
   // Exemplo de cálculo: média de vlr_tonelada * toneladas
-  const total = tabelaData.data.resultset.reduce((acc, row) => acc + Number(row[5]), 0); // vlr_tonelada_km
-  const media = total / tabelaData.data.resultset.length;
+  const total = resultset.reduce((acc: number, row: any[]) => acc + Number(row[5]), 0); // vlr_tonelada_km
+  const media = total / resultset.length;
 
   setFrete(media * toneladas);
 }
@@ -141,11 +140,6 @@ function lastFullWeekMondayISO(base: Date = new Date()) {
   return `${y}-${m}-${d}`;
 }
   const [dataConj, setDataConj] = useState<string>(lastFullWeekMondayISO())
-
-  // Placeholder calculadora de frete (CONAB): valor por km e distância
-  const [distKm, setDistKm] = useState(120)
-  const [valorPorKm, setValorPorKm] = useState(5.2)
-  const freteEstimado = (distKm * valorPorKm).toFixed(2)
 
   // Backend: preços mínimos por cultivos cadastrados
   const cultivosNomes = useMemo(() => cultivoNames.join(','), [cultivoNames])
@@ -198,7 +192,7 @@ function lastFullWeekMondayISO(base: Date = new Date()) {
   uniqueIndexes = uniqueIndexes.slice(0, -1);
   // 🔹 Filtra e renomeia headers
   const headers = uniqueIndexes.map((i) => {
-    const name = data.metadata[i].colName;
+    const name = data?.metadata?.[i]?.colName;
     switch (name) {
       case "Regionalizacao.Regionalizacao":
         return "UF";
@@ -423,8 +417,8 @@ function lastFullWeekMondayISO(base: Date = new Date()) {
     Distância:{" "}
     {loadingTabela1 ? (
       <span>Carregando...</span>
-    ) : tabelaData?.data?.resultset?.length > 0 ? (
-      <span>{tabelaData.data.resultset[0][4]} km</span>
+    ) : (tabelaData?.data?.resultset ?? []).length > 0 ? (
+      <span>{tabelaData?.data?.resultset?.[0]?.[4]} km</span>
     ) : (
       <span>-</span>
     )}
@@ -433,14 +427,14 @@ function lastFullWeekMondayISO(base: Date = new Date()) {
 
     {/* Tabela ocupando linha inteira */}
     {loadingTabela1 && <p>Carregando tabela...</p>}
-    {!loadingTabela1 && tabelaData?.data?.resultset?.length > 0 && (
+    {!loadingTabela1 && (tabelaData?.data?.resultset ?? []).length > 0 && (
   <div className="overflow-x-auto mt-4">
     <table className="min-w-full border">
       <thead>
         <tr>
-          {tabelaData.data.metadata
-            ?.filter(col => !['origem','destino','distancia_em_km'].includes(col.colName))
-            .map(col => (
+          {tabelaData?.data?.metadata
+            ?.filter((col: { colName: string }) => !['origem','destino','distancia_em_km'].includes(col.colName))
+            .map((col: { colIndex: number; colName: string }) => (
               <th key={col.colIndex} className="border px-2 py-1">
                 {formatColName(col.colName)}
               </th>
@@ -448,11 +442,11 @@ function lastFullWeekMondayISO(base: Date = new Date()) {
         </tr>
       </thead>
       <tbody>
-        {tabelaData.data.resultset.map((row, i) => (
+        {tabelaData?.data?.resultset?.map((row: any[], i: number) => (
           <tr key={i}>
-            {row.map((cell, j) => {
-              const colName = tabelaData.data.metadata?.[j].colName;
-              if (['origem','destino','distancia_em_km'].includes(colName)) return null;
+            {row.map((cell: any, j: number) => {
+              const colName = tabelaData?.data?.metadata?.[j]?.colName;
+              if (['origem','destino','distancia_em_km'].includes(colName || '')) return null;
               return <td key={j} className="border px-2 py-1">{cell}</td>;
             })}
           </tr>
@@ -463,7 +457,7 @@ function lastFullWeekMondayISO(base: Date = new Date()) {
 )}
 
     {/* Input de toneladas e botão só aparecem quando tabela carregou */}
-    {!loadingTabela1 && tabelaData?.data?.resultset?.length > 0 && (
+    {!loadingTabela1 && (tabelaData?.data?.resultset ?? []).length > 0 && (
       <div className="flex gap-2 mt-4 items-end">
         <label className="block mb-2">
   Toneladas:

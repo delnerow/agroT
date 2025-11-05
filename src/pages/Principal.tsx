@@ -19,9 +19,6 @@ export default function Principal() {
             <>
               <div className="text-4xl font-bold">{now.temp}°C</div>
               <div className="text-sm text-gray-500">
-                Umidade: {now.humidity}%
-              </div>
-              <div className="text-sm text-gray-500">
                 Chance de chuva: {now.rainChance} mm
               </div>
             </>
@@ -37,7 +34,6 @@ export default function Principal() {
               <div key={f.day} className="border rounded-lg p-3">
                 <div className="text-sm text-gray-500">{f.day}</div>
                 <div className="text-2xl font-semibold">{f.temp}°C</div>
-                <div className="text-xs">Umidade: {f.humidity}%</div>
                 <div className="text-xs">Chuva: {f.rainChance} mm</div>
               </div>
             ))}
