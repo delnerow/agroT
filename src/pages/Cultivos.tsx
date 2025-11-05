@@ -13,7 +13,9 @@
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { useCultivosStore } from '../stores/cultivos'
+import type { Plant } from '../stores/cultivos'
 import MapaLocalizacao from './MapaLocalizacao'
+import { HumidityPlotModal } from '../components/HumidityPlotModal'
 
 const ufs = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -34,10 +36,11 @@ export default function Cultivos() {
   const [novoCusto, setNovoCusto] = useState(0)
   const [novaReceita, setNovaReceita] = useState(0)
   const [novoTipoSolo] = useState<typeof tiposSolo[number]>(farm.tipoSolo || "Arenoso")
+  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null)
 
   async function onAdd(e: FormEvent) {
     e.preventDefault()  
-    await addPlant({
+    const response = await addPlant({
       nome: novoTipoPlanta,
       tipoPlanta: novoTipoPlanta,
       estagioAtual: novoEstagio,
@@ -46,6 +49,12 @@ export default function Cultivos() {
       receitaSafraAnterior: novaReceita,
       tipoSolo: novoTipoSolo
     })
+
+    // Add test data for the new plant
+    if (response?.id) {
+      await useCultivosStore.getState().addTestData(response.id)
+    }
+
     // reset campos
     setNovoArea(0)
     setNovoCusto(0)
@@ -128,13 +137,24 @@ export default function Cultivos() {
           {plants.length === 0 ? (
             <li className="py-3 px-4 text-sm text-gray-500 text-center bg-gray-50 rounded-md">Nenhum cultivo cadastrado.</li>
           ) : plants.map(c => (
-            <li key={c.id} className="py-3 px-4 flex flex-col bg-gray-50 hover:bg-gray-100 rounded-md transition-colors duration-200 space-y-2">
+            <li key={c.id} 
+              className="py-3 px-4 flex flex-col bg-gray-50 hover:bg-gray-100 rounded-md transition-colors duration-200 space-y-2 cursor-pointer"
+              onClick={() => setSelectedPlant(c)}
+            >
               <div className="flex justify-between items-center">
                 <span className="font-medium text-gray-700 flex items-center gap-2">
                   <span>{cultivoIcons[c.nome] || "🌱"}</span>
                   {c.nome}
                 </span>
-                <button className="btn btn-sky-outline text-xs" onClick={() => removePlant(c.id)}>Remover</button>
+                <button 
+                  className="btn btn-sky-outline text-xs" 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removePlant(c.id)
+                  }}
+                >
+                  Remover
+                </button>
               </div>
 
               <div className="grid sm:grid-cols-4 gap-2 text-sm">
@@ -167,6 +187,12 @@ export default function Cultivos() {
       </section>
 
       <p className="text-xs text-gray-400 text-center">Os cultivos cadastrados serão usados nas abas Mercado e Irrigação.</p>
+
+      {/* Modal de dados de umidade */}
+      <HumidityPlotModal 
+        plant={selectedPlant} 
+        onClose={() => setSelectedPlant(null)} 
+      />
     </div>
   )
 }

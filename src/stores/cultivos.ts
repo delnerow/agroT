@@ -43,12 +43,13 @@ type Store = {
   plants: Plant[]
   farm: Farm
   init: () => Promise<void>
-  addPlant: (plant: Omit<Plant, 'id' | 'createdAt' | 'updatedAt' | 'farmId' | 'sensorData'>) => Promise<void>
+  addPlant: (plant: Omit<Plant, 'id' | 'createdAt' | 'updatedAt' | 'farmId' | 'sensorData'>) => Promise<Plant>
   removePlant: (id: string) => Promise<void>
   updatePlant: (id: string, data: Partial<Plant>) => Promise<void>
   updateFarm: (data: Partial<Farm>) => Promise<void>
   getSensorData: (plantId: string) => Promise<SensorData[]>
   addSensorData: (plantId: string, temperature: number, humidity: number) => Promise<SensorData>
+  addTestData: (plantId: string) => Promise<void>
 }
 
 // Map of ideal humidity by plant type and growth stage
@@ -123,11 +124,6 @@ export const useCultivosStore = create<Store>()(
 
       addPlant: async (plant) => {
         try {
-          console.log('Sending plant data:', {
-            ...plant,
-            farmId: get().farm.id
-          })
-          
           // Format the data according to the Prisma schema
           const plantData = {
             nome: plant.nome,
@@ -140,14 +136,13 @@ export const useCultivosStore = create<Store>()(
             farmId: get().farm.id
           }
           
-          console.log('Sending formatted plant data:', plantData)
           const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plants`, plantData)
-          
-          console.log('Server response:', response.data)
+          const newPlant = response.data
           
           set((state) => ({
-            plants: [...state.plants, response.data]
+            plants: [...state.plants, newPlant]
           }))
+          return newPlant
         } catch (error) {
           console.error('Error adding plant:', error)
           if (axios.isAxiosError(error)) {
@@ -167,6 +162,7 @@ export const useCultivosStore = create<Store>()(
           set((state) => ({
             plants: [...state.plants, newPlant]
           }))
+          return newPlant
         }
       },
 
@@ -234,9 +230,9 @@ export const useCultivosStore = create<Store>()(
         }
       },
 
-      addSensorData: async (plantId, temperature, humidity) => {
+      addSensorData: async (plantId: string, temperature: number, humidity: number) => {
         try {
-          const response = await axios.post('/api/sensor-data', {
+          const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/sensor-data`, {
             plantId,
             temperature,
             humidity
@@ -245,6 +241,32 @@ export const useCultivosStore = create<Store>()(
         } catch (error) {
           console.error('Error adding sensor data:', error)
           throw error
+        }
+      },
+
+      // Helper function to add test data
+      addTestData: async (plantId: string) => {
+        try {
+          // Generate 24 hours of data points (one per hour)
+          const now = new Date()
+          const promises = Array.from({ length: 24 }).map((_, i) => {
+            const timestamp = new Date(now.getTime() - (23 - i) * 60 * 60 * 1000)
+            // Random humidity between 50% and 90%
+            const humidity = 50 + Math.random() * 40
+            // Random temperature between 20°C and 30°C
+            const temperature = 20 + Math.random() * 10
+            
+            return axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/sensor-data`, {
+              plantId,
+              temperature,
+              humidity,
+              timestamp
+            })
+          })
+          
+          await Promise.all(promises)
+        } catch (error) {
+          console.error('Error adding test data:', error)
         }
       }
     }),
