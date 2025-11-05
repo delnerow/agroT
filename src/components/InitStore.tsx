@@ -7,7 +7,7 @@ export function InitStore() {
     localStorage.removeItem('cultivos-storage')
   }, [])
   const init = useCultivosStore(state => state.init)
-  const [isLoading, setIsLoading] = useState(true)
+  const [, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
   useEffect(() => {
