@@ -27,13 +27,16 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }))
 // --- Database endpoints ---
 app.post('/api/plants', async (req, res) => {
   try {
+    console.log('Received plant data:', req.body)
     const plant = await prisma.plant.create({
       data: req.body
     })
+    console.log('Created plant:', plant)
     res.json(plant)
   } catch (error) {
     console.error('Error creating plant:', error)
-    res.status(500).json({ error: 'Failed to create plant' })
+    console.error('Error details:', error.message)
+    res.status(500).json({ error: 'Failed to create plant', details: error.message })
   }
 })
 

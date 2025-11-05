@@ -91,8 +91,8 @@ export const useCultivosStore = create<Store>()(
       init: async () => {
         try {
           const [plantsRes, farmRes] = await Promise.all([
-            axios.get('http://localhost:3001/api/plants'),
-            axios.get('http://localhost:3001/api/farm')
+            axios.get(`${import.meta.env.VITE_API_URL}/api/plants`),
+            axios.get(`${import.meta.env.VITE_API_URL}/api/farm`)
           ])
           
           if (plantsRes.data) {
@@ -109,15 +109,38 @@ export const useCultivosStore = create<Store>()(
 
       addPlant: async (plant) => {
         try {
-          const response = await axios.post('http://localhost:3001/api/plants', {
+          console.log('Sending plant data:', {
             ...plant,
             farmId: get().farm.id
           })
+          
+          // Format the data according to the Prisma schema
+          const plantData = {
+            nome: plant.nome,
+            tipoPlanta: plant.tipoPlanta,
+            estagioAtual: plant.estagioAtual,
+            tipoSolo: plant.tipoSolo,
+            areaHa: Number(plant.areaHa),
+            custoSafraAnterior: Number(plant.custoSafraAnterior),
+            receitaSafraAnterior: Number(plant.receitaSafraAnterior),
+            farmId: get().farm.id
+          }
+          
+          console.log('Sending formatted plant data:', plantData)
+          const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plants`, plantData)
+          
+          console.log('Server response:', response.data)
+          
           set((state) => ({
             plants: [...state.plants, response.data]
           }))
         } catch (error) {
           console.error('Error adding plant:', error)
+          if (axios.isAxiosError(error)) {
+            console.error('Error response:', error.response?.data)
+            console.error('Error status:', error.response?.status)
+          }
+          
           // Fallback to local storage if API fails
           const newPlant = {
             ...plant,
@@ -135,7 +158,7 @@ export const useCultivosStore = create<Store>()(
 
       removePlant: async (id) => {
         try {
-          await axios.delete(`http://localhost:3001/api/plants/${id}`)
+          await axios.delete(`${import.meta.env.VITE_API_URL}/api/plants/${id}`)
           set((state) => ({
             plants: state.plants.filter((p) => p.id !== id)
           }))
@@ -150,7 +173,7 @@ export const useCultivosStore = create<Store>()(
 
       updatePlant: async (id, data) => {
         try {
-          const response = await axios.put(`http://localhost:3001/api/plants/${id}`, data)
+          const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/plants/${id}`, data)
           set((state) => ({
             plants: state.plants.map((p) => 
               p.id === id ? response.data : p
@@ -169,7 +192,7 @@ export const useCultivosStore = create<Store>()(
 
       updateFarm: async (data) => {
         try {
-          const response = await axios.put('http://localhost:3001/api/farm', {
+          const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/farm`, {
             id: get().farm.id,
             ...data
           })
