@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import { useCultivosStore } from "../stores/cultivos"
-import type { Farm } from "../stores/cultivos"
+
 
 function LocationPicker() {
   const { farm, updateFarm } = useCultivosStore()
