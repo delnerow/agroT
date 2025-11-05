@@ -12,11 +12,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@prisma/client": "^6.18.0",
     "@react-google-maps/api": "^2.20.7",
     "@tailwindcss/postcss": "^4.1.11",
     "@tanstack/react-query": "^5.84.2",
+    "@types/express": "^5.0.5",
     "adm-zip": "^0.5.16",
-    "axios": "^1.11.0",
+    "axios": "^1.13.2",
     "axios-cookiejar-support": "^6.0.4",
     "cheerio": "1.0.0-rc.12",
     "cors": "^2.8.5",
@@ -25,6 +27,7 @@
     "iconv-lite": "^0.6.3",
     "leaflet": "^1.9.4",
     "node-fetch": "^3.3.2",
+    "prisma": "^6.18.0",
     "puppeteer": "^24.16.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

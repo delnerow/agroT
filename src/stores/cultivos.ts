@@ -1,7 +1,16 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import axios from 'axios'
 
-export type Cultivo = {
+export type SensorData = {
+  id: string
+  plantId: string
+  temperature: number
+  humidity: number
+  timestamp: Date
+}
+
+export type Plant = {
   id: string
   nome: string
   tipoPlanta: "Feijão Preto" | "Feijão Cores" | 'Arroz' | 'Mandioca' | 'Milho' | 'Cafe' | 'Trigo' | 'Banana' | 'Abacaxi'
@@ -10,41 +19,39 @@ export type Cultivo = {
   areaHa: number
   custoSafraAnterior: number
   receitaSafraAnterior: number
-  umidadeNecessaria: number
+  farmId: string
+  sensorData?: SensorData[]
+  createdAt: Date
+  updatedAt: Date
 }
 
-type Fazenda = {
+export type Farm = {
+  id: string
   areaHa: number
   modulosFiscais: number
   uf: string
   tipoSolo: 'Arenoso' | 'Argiloso' | 'Silte'
+  lat?: number
+  lng?: number
+  plants: Plant[]
+  createdAt: Date
+  updatedAt: Date
   localizacao?: { lat: number; lng: number }
 }
 
-type State = {
-  cultivos: Cultivo[]
-  fazenda: Fazenda
-  addCultivo: (c: {
-    nome: string
-    tipoPlanta: Cultivo['tipoPlanta']
-    estagioAtual: Cultivo['estagioAtual']
-    tipoSolo: Fazenda['tipoSolo']
-    areaHa: number
-    custoSafraAnterior: number
-    receitaSafraAnterior: number
-  }) => void
-  removeCultivo: (id: string) => void
-  updateCultivo: (id: string, data: Partial<Cultivo>) => void
-  setFazenda: (data: Partial<Fazenda>) => void
+type Store = {
+  plants: Plant[]
+  farm: Farm
+  addPlant: (plant: Omit<Plant, 'id' | 'createdAt' | 'updatedAt' | 'farmId' | 'sensorData'>) => Promise<void>
+  removePlant: (id: string) => Promise<void>
+  updatePlant: (id: string, data: Partial<Plant>) => Promise<void>
+  updateFarm: (data: Partial<Farm>) => Promise<void>
+  getSensorData: (plantId: string) => Promise<SensorData[]>
+  addSensorData: (plantId: string, temperature: number, humidity: number) => Promise<SensorData>
 }
 
-let nextId = 1
-
-// Mapa de umidade ideal
-const umidadeIdeal: Record<
-  Cultivo['tipoPlanta'],
-  Record<Cultivo['estagioAtual'], number>
-> = {
+// Map of ideal humidity by plant type and growth stage
+const umidadeIdealMap = {
   'Feijão Preto': { Germinacao: 75, Vegetativo: 65, Florescimento: 75, Maturacao: 60 },
   'Feijão Cores': { Germinacao: 75, Vegetativo: 65, Florescimento: 75, Maturacao: 60 },
   Arroz: { Germinacao: 95, Vegetativo: 95, Florescimento: 95, Maturacao: 75 },
@@ -54,58 +61,109 @@ const umidadeIdeal: Record<
   Trigo: { Germinacao: 75, Vegetativo: 70, Florescimento: 80, Maturacao: 65 },
   Banana: { Germinacao: 80, Vegetativo: 75, Florescimento: 80, Maturacao: 75 },
   Abacaxi: { Germinacao: 70, Vegetativo: 65, Florescimento: 70, Maturacao: 65 },
+} as const;
+
+// Helper function to get ideal humidity for a plant
+export const getIdealHumidity = (
+  tipoPlanta: Plant['tipoPlanta'], 
+  estagioAtual: Plant['estagioAtual']
+): number => {
+  return umidadeIdealMap[tipoPlanta][estagioAtual]
 }
 
-export const useCultivosStore = create<State>()(
+export const useCultivosStore = create<Store>()(
   persist(
-    (set) => ({
-      cultivos: [],
-      fazenda: { areaHa: 40, modulosFiscais: 4, uf: 'SP', tipoSolo: 'Arenoso' },
+    (set, get) => ({
+      plants: [],
+      farm: {
+        id: 'default-farm',
+        areaHa: 40,
+        modulosFiscais: 4,
+        uf: 'SP',
+        tipoSolo: 'Argiloso',
+        plants: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
 
-      addCultivo: ({ nome, tipoPlanta, estagioAtual, tipoSolo, areaHa, custoSafraAnterior, receitaSafraAnterior }) =>
-        set((s) => ({
-          cultivos: [
-            ...s.cultivos,
-            {
-              id: String(nextId++),
-              nome,
-              tipoPlanta,
-              estagioAtual,
-              tipoSolo,
-              areaHa,
-              custoSafraAnterior,
-              receitaSafraAnterior,
-              umidadeNecessaria: umidadeIdeal[tipoPlanta][estagioAtual],
-            },
-          ],
-        })),
+      addPlant: async (plant) => {
+        try {
+          const response = await axios.post('/api/plants', {
+            ...plant,
+            farmId: get().farm.id
+          })
+          set((state) => ({
+            plants: [...state.plants, response.data]
+          }))
+        } catch (error) {
+          console.error('Error adding plant:', error)
+        }
+      },
 
-      removeCultivo: (id) => set(state => ({
-  cultivos: state.cultivos.filter(c => c.id !== id)
-})),
+      removePlant: async (id) => {
+        try {
+          await axios.delete(`/api/plants/${id}`)
+          set((state) => ({
+            plants: state.plants.filter((p) => p.id !== id)
+          }))
+        } catch (error) {
+          console.error('Error removing plant:', error)
+        }
+      },
 
-      updateCultivo: (id, data) =>
-        set((s) => ({
-          cultivos: s.cultivos.map((c) =>
-            c.id === id
-              ? {
-                  ...c,
-                  ...data,
-                  // Atualiza a umidade se tipoPlanta ou estagioAtual mudarem
-                  umidadeNecessaria:
-                    data.tipoPlanta || data.estagioAtual
-                      ? umidadeIdeal[data.tipoPlanta ?? c.tipoPlanta][
-                          data.estagioAtual ?? c.estagioAtual
-                        ]
-                      : c.umidadeNecessaria,
-                }
-              : c
-          ),
-        })),
+      updatePlant: async (id, data) => {
+        try {
+          const response = await axios.put(`/api/plants/${id}`, data)
+          set((state) => ({
+            plants: state.plants.map((p) => 
+              p.id === id ? response.data : p
+            )
+          }))
+        } catch (error) {
+          console.error('Error updating plant:', error)
+        }
+      },
 
-      setFazenda: (data) =>
-        set((s) => ({ fazenda: { ...s.fazenda, ...data } })),
+      updateFarm: async (data) => {
+        try {
+          const response = await axios.put('/api/farm', {
+            id: get().farm.id,
+            ...data
+          })
+          set({ farm: response.data })
+        } catch (error) {
+          console.error('Error updating farm:', error)
+        }
+      },
+
+      getSensorData: async (plantId) => {
+        try {
+          const response = await axios.get(`/api/sensor-data/${plantId}`)
+          return response.data
+        } catch (error) {
+          console.error('Error fetching sensor data:', error)
+          return []
+        }
+      },
+
+      addSensorData: async (plantId, temperature, humidity) => {
+        try {
+          const response = await axios.post('/api/sensor-data', {
+            plantId,
+            temperature,
+            humidity
+          })
+          return response.data
+        } catch (error) {
+          console.error('Error adding sensor data:', error)
+          throw error
+        }
+      }
     }),
-    { name: 'agrot-cultivos' }
+    {
+      name: 'cultivos-storage',
+      // Only persist the farm data, since plants and sensor data come from the database
+      partialize: (state) => ({ farm: state.farm })
+    }
   )
 )
