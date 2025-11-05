@@ -42,6 +42,7 @@ export type Farm = {
 type Store = {
   plants: Plant[]
   farm: Farm
+  init: () => Promise<void>
   addPlant: (plant: Omit<Plant, 'id' | 'createdAt' | 'updatedAt' | 'farmId' | 'sensorData'>) => Promise<void>
   removePlant: (id: string) => Promise<void>
   updatePlant: (id: string, data: Partial<Plant>) => Promise<void>
@@ -86,9 +87,38 @@ export const useCultivosStore = create<Store>()(
         updatedAt: new Date()
       },
 
+      // Load initial data on store creation
+      init: async () => {
+        try {
+          const [plantsRes, farmRes] = await Promise.all([
+            axios.get('http://localhost:3001/api/plants'),
+            axios.get('http://localhost:3001/api/farm')
+          ])
+          
+          if (plantsRes.data) {
+            set({ plants: plantsRes.data })
+          }
+          
+          if (farmRes.data) {
+            set({ farm: farmRes.data })
+          }
+        } catch (error) {
+          console.error('Error loading initial data:', error)
+        }
+      },
+
       addPlant: async (plant) => {
         try {
-          // Add plant locally with generated ID when server is not available
+          const response = await axios.post('http://localhost:3001/api/plants', {
+            ...plant,
+            farmId: get().farm.id
+          })
+          set((state) => ({
+            plants: [...state.plants, response.data]
+          }))
+        } catch (error) {
+          console.error('Error adding plant:', error)
+          // Fallback to local storage if API fails
           const newPlant = {
             ...plant,
             id: Math.random().toString(36).substr(2, 9),
@@ -97,39 +127,56 @@ export const useCultivosStore = create<Store>()(
             updatedAt: new Date(),
             sensorData: []
           }
-          
           set((state) => ({
             plants: [...state.plants, newPlant]
           }))
-        } catch (error) {
-          console.error('Error adding plant:', error)
         }
       },
 
       removePlant: async (id) => {
         try {
+          await axios.delete(`http://localhost:3001/api/plants/${id}`)
           set((state) => ({
             plants: state.plants.filter((p) => p.id !== id)
           }))
         } catch (error) {
           console.error('Error removing plant:', error)
+          // Fallback to local storage if API fails
+          set((state) => ({
+            plants: state.plants.filter((p) => p.id !== id)
+          }))
         }
       },
 
       updatePlant: async (id, data) => {
         try {
+          const response = await axios.put(`http://localhost:3001/api/plants/${id}`, data)
+          set((state) => ({
+            plants: state.plants.map((p) => 
+              p.id === id ? response.data : p
+            )
+          }))
+        } catch (error) {
+          console.error('Error updating plant:', error)
+          // Fallback to local storage if API fails
           set((state) => ({
             plants: state.plants.map((p) => 
               p.id === id ? { ...p, ...data, updatedAt: new Date() } : p
             )
           }))
-        } catch (error) {
-          console.error('Error updating plant:', error)
         }
       },
 
       updateFarm: async (data) => {
         try {
+          const response = await axios.put('http://localhost:3001/api/farm', {
+            id: get().farm.id,
+            ...data
+          })
+          set({ farm: response.data })
+        } catch (error) {
+          console.error('Error updating farm:', error)
+          // Fallback to local storage if API fails
           set((state) => ({ 
             farm: { 
               ...state.farm, 
@@ -137,8 +184,6 @@ export const useCultivosStore = create<Store>()(
               updatedAt: new Date() 
             } 
           }))
-        } catch (error) {
-          console.error('Error updating farm:', error)
         }
       },
 

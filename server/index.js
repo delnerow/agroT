@@ -4,6 +4,9 @@ import cors from 'cors'
 import { load as loadHtml } from 'cheerio'
 import axios from 'axios'
 import https from 'https'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 const PORT = process.env.PORT || 3001
 const BASE = 'https://portaldeinformacoes.conab.gov.br'
@@ -20,6 +23,81 @@ app.use(cors())
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
+
+// --- Database endpoints ---
+app.post('/api/plants', async (req, res) => {
+  try {
+    const plant = await prisma.plant.create({
+      data: req.body
+    })
+    res.json(plant)
+  } catch (error) {
+    console.error('Error creating plant:', error)
+    res.status(500).json({ error: 'Failed to create plant' })
+  }
+})
+
+app.get('/api/plants', async (_req, res) => {
+  try {
+    const plants = await prisma.plant.findMany({
+      include: { sensorData: true }
+    })
+    res.json(plants)
+  } catch (error) {
+    console.error('Error fetching plants:', error)
+    res.status(500).json({ error: 'Failed to fetch plants' })
+  }
+})
+
+app.put('/api/plants/:id', async (req, res) => {
+  try {
+    const plant = await prisma.plant.update({
+      where: { id: req.params.id },
+      data: req.body
+    })
+    res.json(plant)
+  } catch (error) {
+    console.error('Error updating plant:', error)
+    res.status(500).json({ error: 'Failed to update plant' })
+  }
+})
+
+app.delete('/api/plants/:id', async (req, res) => {
+  try {
+    await prisma.plant.delete({
+      where: { id: req.params.id }
+    })
+    res.json({ ok: true })
+  } catch (error) {
+    console.error('Error deleting plant:', error)
+    res.status(500).json({ error: 'Failed to delete plant' })
+  }
+})
+
+app.get('/api/farm', async (_req, res) => {
+  try {
+    const farm = await prisma.farm.findFirst()
+    res.json(farm)
+  } catch (error) {
+    console.error('Error fetching farm:', error)
+    res.status(500).json({ error: 'Failed to fetch farm' })
+  }
+})
+
+app.put('/api/farm', async (req, res) => {
+  try {
+    const { id, ...data } = req.body
+    const farm = await prisma.farm.upsert({
+      where: { id: id || 'default-farm' },
+      update: data,
+      create: { id: 'default-farm', ...data }
+    })
+    res.json(farm)
+  } catch (error) {
+    console.error('Error updating farm:', error)
+    res.status(500).json({ error: 'Failed to update farm' })
+  }
+})
 
 // --- Produtos 360 helpers & endpoints (top-level) ---
 const axiosPentaho = axios.create({
