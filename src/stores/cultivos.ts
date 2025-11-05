@@ -2,6 +2,20 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import axios from 'axios'
 
+// Helper to build API URLs.
+// If VITE_API_URL is set, use it as a prefix (e.g. https://api.example.com).
+// If VITE_API_URL is empty, map /api/* to Netlify functions path /.netlify/functions/*
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+const apiUrl = (path: string) => {
+  if (API_BASE) return `${API_BASE}${path}`
+  // If no API_BASE provided, map /api/xyz -> /.netlify/functions/xyz
+  if (path.startsWith('/api/')) {
+    const fnName = path.replace('/api/', '')
+    return `/.netlify/functions/${fnName}`
+  }
+  return path
+}
+
 export type SensorData = {
   id: string
   plantId: string
@@ -91,10 +105,10 @@ export const useCultivosStore = create<Store>()(
       // Load initial data on store creation
       init: async () => {
         try {
-          console.log('Initializing store with URL:', import.meta.env.VITE_API_URL || 'http://localhost:3001')
+          console.log('Initializing store with API base:', API_BASE || '(relative)')
           const [plantsRes, farmRes] = await Promise.all([
-            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plants`),
-            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/farm`)
+            axios.get(apiUrl('/api/plants')),
+            axios.get(apiUrl('/api/farm'))
           ])
           
           console.log('Received plants:', plantsRes.data)
@@ -128,7 +142,7 @@ export const useCultivosStore = create<Store>()(
               createdAt: new Date(),
               updatedAt: new Date()
             }
-            const response = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/farm`, defaultFarm)
+            const response = await axios.put(apiUrl('/api/farm'), defaultFarm)
             set({ farm: response.data })
           }
         } catch (error) {
@@ -168,7 +182,7 @@ export const useCultivosStore = create<Store>()(
             farmId: get().farm.id
           }
           
-          const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plants`, plantData)
+          const response = await axios.post(apiUrl('/api/plants'), plantData)
           const newPlant = response.data
           
           set((state) => ({
@@ -200,7 +214,7 @@ export const useCultivosStore = create<Store>()(
 
       removePlant: async (id) => {
         try {
-          await axios.delete(`${import.meta.env.VITE_API_URL}/api/plants/${id}`)
+          await axios.delete(apiUrl(`/api/plants/${id}`))
           set((state) => ({
             plants: state.plants.filter((p) => p.id !== id)
           }))
@@ -215,7 +229,7 @@ export const useCultivosStore = create<Store>()(
 
       updatePlant: async (id, data) => {
         try {
-          const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/plants/${id}`, data)
+          const response = await axios.put(apiUrl(`/api/plants/${id}`), data)
           set((state) => ({
             plants: state.plants.map((p) => 
               p.id === id ? response.data : p
@@ -234,7 +248,7 @@ export const useCultivosStore = create<Store>()(
 
       updateFarm: async (data) => {
         try {
-          const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/farm`, {
+          const response = await axios.put(apiUrl('/api/farm'), {
             id: get().farm.id,
             ...data
           })
@@ -254,7 +268,7 @@ export const useCultivosStore = create<Store>()(
 
       getSensorData: async (plantId) => {
         try {
-          const response = await axios.get(`/api/sensor-data/${plantId}`)
+          const response = await axios.get(apiUrl(`/api/sensor-data/${plantId}`))
           return response.data
         } catch (error) {
           console.error('Error fetching sensor data:', error)
@@ -264,7 +278,7 @@ export const useCultivosStore = create<Store>()(
 
       addSensorData: async (plantId: string, temperature: number, humidity: number) => {
         try {
-          const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/sensor-data`, {
+          const response = await axios.post(apiUrl('/api/sensor-data'), {
             plantId,
             temperature,
             humidity
@@ -288,7 +302,7 @@ export const useCultivosStore = create<Store>()(
             // Random temperature between 20°C and 30°C
             const temperature = 20 + Math.random() * 10
             
-            return axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/sensor-data`, {
+            return axios.post(apiUrl('/api/sensor-data'), {
               plantId,
               temperature,
               humidity,

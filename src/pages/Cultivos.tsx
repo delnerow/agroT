@@ -11,11 +11,11 @@
     "Abacaxi": "🍍"
   }
 import type { FormEvent } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { HumidityPlotModal } from '../components/HumidityPlotModal'
 import { useCultivosStore } from '../stores/cultivos'
 import type { Plant } from '../stores/cultivos'
 import MapaLocalizacao from './MapaLocalizacao'
-import { HumidityPlotModal} from '../components//HumidityPlotModal'
 
 const ufs = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -40,6 +40,26 @@ export default function Cultivos() {
   const [novaReceita, setNovaReceita] = useState(0)
   const [novoTipoSolo] = useState<typeof tiposSolo[number]>(farm.tipoSolo || "Arenoso")
   const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Load plants from API into store on mount if store is empty
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const state = useCultivosStore.getState()
+        if (mounted && (!state.plants || state.plants.length === 0)) {
+          setIsLoading(true)
+          await state.init()
+        }
+      } catch (err) {
+        console.error('Error initializing cultivos store:', err)
+      } finally {
+        if (mounted) setIsLoading(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
 
   async function onAdd(e: FormEvent) {
     e.preventDefault()  
@@ -137,7 +157,9 @@ export default function Cultivos() {
         </form>
 
         <ul className="space-y-2">
-          {plants.length === 0 ? (
+          {isLoading ? (
+            <li className="py-3 px-4 text-sm text-gray-500 text-center bg-gray-50 rounded-md">Carregando cultivos...</li>
+          ) : plants.length === 0 ? (
             <li className="py-3 px-4 text-sm text-gray-500 text-center bg-gray-50 rounded-md">Nenhum cultivo cadastrado.</li>
           ) : plants.map(c => (
             <li key={c.id} 
