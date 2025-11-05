@@ -15,7 +15,6 @@ import { useState } from 'react'
 import { useCultivosStore } from '../stores/cultivos'
 import type { Plant } from '../stores/cultivos'
 import MapaLocalizacao from './MapaLocalizacao'
-import { HumidityPlotModal } from '../components/HumidityPlotModal'
 
 const ufs = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -28,6 +27,9 @@ const tiposSolo = ["Arenoso", "Argiloso", "Silte"] as const
 
 export default function Cultivos() {
   const { plants, farm, addPlant, removePlant, updateFarm, updatePlant } = useCultivosStore()
+  
+  console.log('Cultivos rendered with plants:', plants)
+  console.log('Current farm state:', farm)
   
   // Estado para nova planta
   const [novoTipoPlanta, setNovoTipoPlanta] = useState<typeof cultivosDisponiveis[number]>("Feijão Preto")

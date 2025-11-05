@@ -91,20 +91,52 @@ export const useCultivosStore = create<Store>()(
       // Load initial data on store creation
       init: async () => {
         try {
+          console.log('Initializing store with URL:', import.meta.env.VITE_API_URL || 'http://localhost:3001')
           const [plantsRes, farmRes] = await Promise.all([
-            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plants`).catch(() => ({ data: [] })),
-            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/farm`).catch(() => ({ data: null }))
+            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plants`),
+            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/farm`)
           ])
           
-          if (plantsRes.data) {
-            set({ plants: plantsRes.data })
+          console.log('Received plants:', plantsRes.data)
+          console.log('Received farm:', farmRes.data)
+          
+          if (Array.isArray(plantsRes.data)) {
+            console.log('Setting plants in store:', plantsRes.data)
+            set((state) => ({ 
+              ...state,
+              plants: plantsRes.data 
+            }))
+          } else {
+            console.warn('Plants data is not an array:', plantsRes.data)
           }
           
           if (farmRes.data) {
-            set({ farm: farmRes.data })
+            console.log('Setting farm in store:', farmRes.data)
+            set((state) => ({
+              ...state,
+              farm: farmRes.data
+            }))
+          } else {
+            // If no farm exists, create default farm
+            const defaultFarm = {
+              id: 'default-farm',
+              areaHa: 40,
+              modulosFiscais: 4,
+              uf: 'SP',
+              tipoSolo: 'Argiloso',
+              plants: [],
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+            const response = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/farm`, defaultFarm)
+            set({ farm: response.data })
           }
         } catch (error) {
           console.error('Error loading initial data:', error)
+          if (axios.isAxiosError(error)) {
+            console.error('Error response:', error.response?.data)
+            console.error('Error status:', error.response?.status)
+          }
           // Use default values if API call fails
           set({
             plants: [],
@@ -272,8 +304,9 @@ export const useCultivosStore = create<Store>()(
     }),
     {
       name: 'cultivos-storage',
-      // Persist both farm and plants data locally
-      partialize: (state) => ({ farm: state.farm, plants: state.plants })
+      // Only persist farm data locally
+      partialize: (state) => ({ farm: state.farm }),
+      version: 1
     }
   )
 )

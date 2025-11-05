@@ -12,6 +12,8 @@
   }
 import { useEffect, useMemo, useState } from 'react'
 import { useCultivosStore, getIdealHumidity } from '../stores/cultivos'
+import { HumidityPlotModal } from '../components/HumidityPlotModal'
+import type { Plant } from '../stores/cultivos'
 
 type IrrigacaoInfo = {
   umidadeAtual: number
@@ -26,6 +28,8 @@ export default function Irrigacao() {
   const [metodoGlobal, setMetodoGlobal] = useState<IrrigacaoInfo['metodo']>('Aspersão')
   const { plants, addSensorData } = useCultivosStore()
   const [dados, setDados] = useState<Record<string, IrrigacaoInfo>>({})
+  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null)
+  const [hoveredPlantId, setHoveredPlantId] = useState<string | null>(null)
 
   // Inicializa os dados de irrigação para cada planta
   useEffect(() => {
@@ -120,7 +124,15 @@ export default function Irrigacao() {
             {plants.map((p) => {
               const d = dados[p.id]
               return (
-                <div key={p.id} className="border rounded-lg p-3 space-y-2">
+                <div 
+                  key={p.id} 
+                  className={`border rounded-lg p-3 space-y-2 transition-all cursor-pointer ${
+                    hoveredPlantId === p.id ? 'shadow-lg transform scale-[1.02] border-blue-500' : ''
+                  }`}
+                  onMouseEnter={() => setHoveredPlantId(p.id)}
+                  onMouseLeave={() => setHoveredPlantId(null)}
+                  onClick={() => setSelectedPlant(p)}
+                >
                   <div className="font-medium flex items-center gap-2">
                     <span>{cultivoIcons[p.nome] || "🌱"}</span>
                     {p.nome}
@@ -142,9 +154,16 @@ export default function Irrigacao() {
                 </div>
               )
             })}
-          </div>
+                    </div>
         )}
       </section>
+
+      {/* Humidity Plot Modal */}
+      <HumidityPlotModal
+        plant={selectedPlant}
+        onClose={() => setSelectedPlant(null)}
+      />
+```
     </div>
   )
 }
