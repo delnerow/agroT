@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { useCultivosStore } from '../stores/cultivos'
 import type { Plant } from '../stores/cultivos'
 import MapaLocalizacao from './MapaLocalizacao'
+import { HumidityPlotModal} from '../components//HumidityPlotModal'
 
 const ufs = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
