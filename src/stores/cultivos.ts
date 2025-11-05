@@ -91,8 +91,8 @@ export const useCultivosStore = create<Store>()(
       init: async () => {
         try {
           const [plantsRes, farmRes] = await Promise.all([
-            axios.get(`${import.meta.env.VITE_API_URL}/api/plants`),
-            axios.get(`${import.meta.env.VITE_API_URL}/api/farm`)
+            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plants`).catch(() => ({ data: [] })),
+            axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/farm`).catch(() => ({ data: null }))
           ])
           
           if (plantsRes.data) {
@@ -104,6 +104,20 @@ export const useCultivosStore = create<Store>()(
           }
         } catch (error) {
           console.error('Error loading initial data:', error)
+          // Use default values if API call fails
+          set({
+            plants: [],
+            farm: {
+              id: 'default-farm',
+              areaHa: 40,
+              modulosFiscais: 4,
+              uf: 'SP',
+              tipoSolo: 'Argiloso',
+              plants: [],
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          })
         }
       },
 
