@@ -88,12 +88,18 @@ export const useCultivosStore = create<Store>()(
 
       addPlant: async (plant) => {
         try {
-          const response = await axios.post('/api/plants', {
+          // Add plant locally with generated ID when server is not available
+          const newPlant = {
             ...plant,
-            farmId: get().farm.id
-          })
+            id: Math.random().toString(36).substr(2, 9),
+            farmId: get().farm.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            sensorData: []
+          }
+          
           set((state) => ({
-            plants: [...state.plants, response.data]
+            plants: [...state.plants, newPlant]
           }))
         } catch (error) {
           console.error('Error adding plant:', error)
@@ -102,7 +108,6 @@ export const useCultivosStore = create<Store>()(
 
       removePlant: async (id) => {
         try {
-          await axios.delete(`/api/plants/${id}`)
           set((state) => ({
             plants: state.plants.filter((p) => p.id !== id)
           }))
@@ -113,10 +118,9 @@ export const useCultivosStore = create<Store>()(
 
       updatePlant: async (id, data) => {
         try {
-          const response = await axios.put(`/api/plants/${id}`, data)
           set((state) => ({
             plants: state.plants.map((p) => 
-              p.id === id ? response.data : p
+              p.id === id ? { ...p, ...data, updatedAt: new Date() } : p
             )
           }))
         } catch (error) {
@@ -126,11 +130,13 @@ export const useCultivosStore = create<Store>()(
 
       updateFarm: async (data) => {
         try {
-          const response = await axios.put('/api/farm', {
-            id: get().farm.id,
-            ...data
-          })
-          set({ farm: response.data })
+          set((state) => ({ 
+            farm: { 
+              ...state.farm, 
+              ...data,
+              updatedAt: new Date() 
+            } 
+          }))
         } catch (error) {
           console.error('Error updating farm:', error)
         }
@@ -162,8 +168,8 @@ export const useCultivosStore = create<Store>()(
     }),
     {
       name: 'cultivos-storage',
-      // Only persist the farm data, since plants and sensor data come from the database
-      partialize: (state) => ({ farm: state.farm })
+      // Persist both farm and plants data locally
+      partialize: (state) => ({ farm: state.farm, plants: state.plants })
     }
   )
 )
